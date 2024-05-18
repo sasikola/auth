@@ -21,5 +21,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log("Example app listening on port 3000!");
+  console.log(`Server listening on port ${port}!`);
 });

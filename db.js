@@ -1,18 +1,15 @@
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-dotenv.config()
+dotenv.config();
 
 const mongoUrl = process.env.MONGO_URL;
 
-mongoose.connect(mongoUrl, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect(mongoUrl);
 
 const db = mongoose.connection;
 
 db.on("connected", function () {
-  console.log("Mongoose default connection open to " + mongoUrl);
+  console.log("Mongoose default connection open to ");
 });
 
 db.on("disconnected", function () {
@@ -26,7 +23,6 @@ db.on("reconnected", function () {
 db.on("close", function () {
   console.log("Mongoose default connection closed");
 });
-
 
 db.on("error", console.error.bind(console, "connection error:"));
 
