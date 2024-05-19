@@ -1,7 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
-const passport = require("./middleware/auth");
+const passport = require("./middleware/passportAuth");
 
 const db = require("./db");
 const User = require("./models/User");
