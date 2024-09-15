@@ -3,13 +3,14 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { jwtAuthMiddleware, generateToken } = require("../middleware/jwtAuth");
+const nodemail = require("nodemailer");
 
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, username, email, password } = req.body;
-    let existingUser = await User.findOne({ $or: [{ username }, { email }] });
+    const { fullName, userName, email, mobile, password } = req.body;
+    let existingUser = await User.findOne({ $or: [{ userName }, { email }] });
     if (existingUser) {
       res.json({ error: "User exists with this username or email" });
     }
@@ -18,15 +19,16 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = new User({
-      name,
-      username,
+      fullName,
+      userName,
       email,
+      mobile,
       password: hashedPassword,
     });
     const response = await user.save();
     const payload = {
       _id: response.id,
-      username: response.username,
+      username: response.userName,
     };
     const token = generateToken(payload);
     res.json({
@@ -42,8 +44,8 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { userName, password } = req.body;
+    const user = await User.findOne({ userName });
     if (!user) {
       return res
         .status(400)
@@ -57,7 +59,7 @@ router.post("/login", async (req, res) => {
     // to generate token
     const payload = {
       _id: user.id,
-      username: user.username,
+      userName: user.userName,
     };
     const token = generateToken(payload);
 
@@ -88,6 +90,32 @@ router.get("/profile", jwtAuthMiddleware, async (req, res) => {
     res
       .status(200)
       .json({ message: "User profile fetched successfully!", user: user });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error", error });
+  }
+});
+
+// route to forgot password
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email, mobile, newPassword, confirmNewPassword } = req.body;
+
+    const user = await User.findOne({ email, mobile });
+    if (!user) {
+      return res.status(400).json({ error: "Invalid email or mobile number!" });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ error: "Passwords do not match!" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully!" });
   } catch (error) {
     res.status(500).json({ error: "Internal server error", error });
   }
