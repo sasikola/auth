@@ -25,7 +25,7 @@ app.use(
     credentials: true,
   })
 );
-
+// app.use(cors());
 app.use(bodyParser.json());
 const localAuthMiddleware = passport.authenticate("local", { session: false });
 
