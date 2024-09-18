@@ -1,7 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
-const passport = require("./middleware/passportAuth");
 const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
@@ -15,7 +14,6 @@ dotenv.config();
 const port = process.env.PORT;
 
 const app = express();
-app.use(passport.initialize());
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(
@@ -27,7 +25,6 @@ app.use(
 );
 // app.use(cors());
 app.use(bodyParser.json());
-const localAuthMiddleware = passport.authenticate("local", { session: false });
 
 app.get("/", (req, res) => {
   res.send("Server is healthy!");
