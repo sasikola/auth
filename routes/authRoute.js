@@ -10,17 +10,22 @@ const router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, userName, email, mobile, password } = req.body;
+    const { fullName, userName, email, mobile, password, confirmPassword } =
+      req.body;
 
-    if (!fullName || !userName || !email || !mobile || !password) {
+    if (
+      !fullName ||
+      !userName ||
+      !email ||
+      !mobile ||
+      !password ||
+      !confirmPassword
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Validate that userName and email are not empty
-    if (!userName.trim() || !email.trim()) {
-      return res
-        .status(400)
-        .json({ error: "Username and email cannot be empty" });
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
     }
 
     let existingUser = await User.findOne({ $or: [{ userName }, { email }] });
@@ -35,9 +40,9 @@ router.post("/register", async (req, res) => {
 
     const user = new User({
       fullName,
-      userName: userName.trim(), // Ensure username is not null
-      email: email.trim().toLowerCase(),
-      mobile: mobile.trim(),
+      userName,
+      email,
+      mobile,
       password: hashedPassword,
     });
     const response = await user.save();
@@ -49,43 +54,6 @@ router.post("/register", async (req, res) => {
   } catch (err) {
     console.error("Error during registration:", err);
     res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.post("/login", async (req, res) => {
-  try {
-    const { userName, password } = req.body;
-    const user = await User.findOne({ userName });
-    if (!user) {
-      return res
-        .status(400)
-        .json({ error: "User not found with this username!" });
-    }
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-    if (!isPasswordMatch) {
-      return res.status(400).json({ error: "Incorrect password!" });
-    }
-
-    // to generate token
-    const payload = {
-      _id: user.id,
-      userName: user.userName,
-    };
-    const token = generateToken(payload);
-
-    res.status(200).json({ message: "Logged in successfully!", token: token });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error", error });
-  }
-});
-
-// route to get all users
-router.get("/users", jwtAuthMiddleware, async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json({ message: "Users fetched successfully!", users });
-  } catch (err) {
-    res.status(500).json({ error: "Internal server error", err });
   }
 });
 
