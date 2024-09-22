@@ -10,72 +10,98 @@ const router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { fullName, userName, email, mobile, password, confirmPassword } =
-      req.body;
+    const { fullName, userName, email, mobile, password, confirmPassword } = req.body;
 
-    if (
-      !fullName ||
-      !userName ||
-      !email ||
-      !mobile ||
-      !password ||
-      !confirmPassword
-    ) {
+    // Check if all fields are provided
+    if (!fullName || !userName || !email || !mobile || !password || !confirmPassword) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
+    // Check if passwords match
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
+    // Check if the user already exists by username or email
     let existingUser = await User.findOne({ $or: [{ userName }, { email }] });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ error: "User exists with this username or email" });
+      return res.status(400).json({ error: "User already exists with this username or email" });
     }
 
+    // Hash the password before saving
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Create a new user with the hashed password
     const user = new User({
       fullName,
       userName,
       email,
       mobile,
-      password: hashedPassword,
+      password: hashedPassword, // Storing the hashed password
     });
-    const response = await user.save();
 
+    // Save the user to the database
+    const savedUser = await user.save();
+
+    // Send success response
     res.status(201).json({
       message: "User registered successfully!",
-      response,
+      user: savedUser,
     });
+
   } catch (err) {
     console.error("Error during registration:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-
 // this is for login route
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username })
+    const { userName, password } = req.body;
+
+    // Input validation: Ensure userName and password are provided
+    if (!userName || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    // Fetch user by userName
+    const user = await User.findOne({ userName });
     if (!user) {
-      return res.status(400).json({ message: "User not found!" });
+      return res.status(400).json({ error: "User not found with this username!" });
     }
+
+    // Compare the plain password with the hashed password
     const isPasswordMatch = await bcrypt.compare(password, user.password);
+
     if (!isPasswordMatch) {
-      return res.status(400).json({ message: "Incorrect password!" });
-    } else {
-      return res.status(200).json({ message: "Logged in successfully!"});
+      return res.status(400).json({ error: "Incorrect password!" });
     }
+
+    // Generate a token (JWT or any other token generator you use)
+    const payload = {
+      _id: user._id,
+      userName: user.userName,
+    };
+    const token = generateToken(payload);
+
+    // Respond with success message and token
+    res.status(200).json({
+      message: "Logged in successfully!",
+      token: token,
+      user: {
+        _id: user._id,
+        userName: user.userName,
+        email: user.email, // Include other necessary user details
+      }
+    });
+
   } catch (error) {
-    res.status(400).json({ error: "Internal server error", error });
+    console.error("Error during login:", error);  // Log the error for debugging
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 // route to ger profile data
 router.get("/profile", jwtAuthMiddleware, async (req, res) => {
@@ -148,14 +174,14 @@ function generateOTP() {
 // Step 3: Verify OTP
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { email, otp } = req.body;  // Extract email and otp from req.body
-    
+    const { email, otp } = req.body; // Extract email and otp from req.body
+
     if (!email || !otp) {
       return res.status(400).json({ error: "Email and OTP are required!" });
     }
 
     const user = await User.findOne({
-      email,  // Use the extracted email here
+      email, // Use the extracted email here
       resetPasswordOtp: otp,
       resetPasswordOtpExpire: { $gt: Date.now() },
     });
@@ -164,13 +190,14 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ error: "Invalid or expired OTP!" });
     }
 
-    res.status(200).json({ message: "OTP verified, proceed to reset password" });
+    res
+      .status(200)
+      .json({ message: "OTP verified, proceed to reset password" });
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 // Step 4: Reset password after OTP verification
 router.post("/reset-password", async (req, res) => {
