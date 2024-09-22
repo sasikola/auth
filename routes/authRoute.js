@@ -57,6 +57,26 @@ router.post("/register", async (req, res) => {
   }
 });
 
+
+// this is for login route
+router.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username })
+    if (!user) {
+      return res.status(400).json({ message: "User not found!" });
+    }
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(400).json({ message: "Incorrect password!" });
+    } else {
+      return res.status(200).json({ message: "Logged in successfully!"});
+    }
+  } catch (error) {
+    res.status(400).json({ error: "Internal server error", error });
+  }
+});
+
 // route to ger profile data
 router.get("/profile", jwtAuthMiddleware, async (req, res) => {
   try {
@@ -128,12 +148,14 @@ function generateOTP() {
 // Step 3: Verify OTP
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { otp } = req.body;
-    if (!otp) {
-      return res.status(400).json({ error: "OTP is required!" });
+    const { email, otp } = req.body;  // Extract email and otp from req.body
+    
+    if (!email || !otp) {
+      return res.status(400).json({ error: "Email and OTP are required!" });
     }
 
     const user = await User.findOne({
+      email,  // Use the extracted email here
       resetPasswordOtp: otp,
       resetPasswordOtpExpire: { $gt: Date.now() },
     });
@@ -142,14 +164,13 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ error: "Invalid or expired OTP!" });
     }
 
-    res
-      .status(200)
-      .json({ message: "OTP verified, proceed to reset password" });
+    res.status(200).json({ message: "OTP verified, proceed to reset password" });
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 // Step 4: Reset password after OTP verification
 router.post("/reset-password", async (req, res) => {
