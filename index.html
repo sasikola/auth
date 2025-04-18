@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.IO Test</title>
+</head>
+<body>
+  <h1>Socket.IO Client</h1>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://localhost:5000");
+
+    socket.on("connect", () => {
+      console.log("Connected to server:", socket.id);
+
+      // Join a room
+      socket.emit("join", "room123");
+
+      // Listen for room events
+      socket.on("created", () => console.log("You created the room."));
+      socket.on("joined", () => console.log("You joined the room."));
+      socket.on("ready", () => console.log("Peer is ready."));
+      socket.on("full", () => console.log("Room is full."));
+
+      // Test sending an offer
+      socket.emit("offer", { offer: "DummyOffer", roomId: "room123" });
+
+      socket.on("offer", (data) => {
+        console.log("Received offer:", data.offer);
+      });
+    });
+  </script>
+</body>
+</html>
